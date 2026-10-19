@@ -20,6 +20,7 @@ public class Main : AOPluginEntry
     private const int Port = 7071;
 
     private static WebSocketServer? _server;
+    private static WebPageServer? _page;
     private static string? _snapshotJson;
     private static int _snapshotPf;
     private static int _snapshotRooms;
@@ -44,6 +45,8 @@ public class Main : AOPluginEntry
         });
         _server.Register("resend", _ => _resend = true);
         _server.Start();
+        _page = new WebPageServer();
+        _page.Start();
 
         Chat.RegisterCommand("dmap", (_, _, _) =>
         {
@@ -125,6 +128,8 @@ public class Main : AOPluginEntry
         Game.OnUpdate -= OnUpdate;
         _server?.Stop();
         _server = null;
+        _page?.Stop();
+        _page = null;
         _snapshotJson = null;
     }
 }
