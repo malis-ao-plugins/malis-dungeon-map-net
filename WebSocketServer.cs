@@ -41,7 +41,6 @@ public class WebSocketServer
         try
         {
             _listener.Start();
-            Chat.WriteLine($"Dungeon Map: listening on http://localhost:{_port}");
         }
         catch (Exception ex)
         {

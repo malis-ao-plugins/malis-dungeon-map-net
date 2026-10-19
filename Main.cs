@@ -31,7 +31,7 @@ public class Main : AOPluginEntry
 
     public override void Run()
     {
-        Chat.WriteLine("Mali's Dungeon Map - Net. Open the Dungeon Map window in the toolkit.");
+        Chat.WriteLine("Mali's Dungeon Map - Net");
 
         SpawnTable.Load(PluginDirectory);
 
