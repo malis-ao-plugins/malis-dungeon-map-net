@@ -17,10 +17,7 @@ namespace MalisDungeonMapNet;
 /// </summary>
 public class Main : AOPluginEntry
 {
-    private const int Port = 7071;
-
-    private static WebSocketServer? _server;
-    private static WebPageServer? _page;
+    private static ToolkitApp? _server;
     private static string? _snapshotJson;
     private static int _snapshotPf;
     private static int _snapshotRooms;
@@ -35,18 +32,16 @@ public class Main : AOPluginEntry
 
         SpawnTable.Load(PluginDirectory);
 
-        _server = new WebSocketServer(Port);
-        _server.OnClientConnected += () => _resend = true;
+        _server = ToolkitHub.Register("app_7071");
+        _server.PageConnected += () => _resend = true;
         _server.Register("updateConfig", root =>
         {
-            var settings = root["settings"];
-            if (settings?["showDynels"] != null)
-                _sendDynels = (bool?)settings["showDynels"] ?? true;
+            if (root.TryGetProperty("settings", out var settings) &&
+                settings.TryGetProperty("showDynels", out var showDynels) &&
+                showDynels.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
+                _sendDynels = showDynels.GetBoolean();
         });
         _server.Register("resend", _ => _resend = true);
-        _server.Start();
-        _page = new WebPageServer();
-        _page.Start();
 
         Chat.RegisterCommand("dmap", (_, _, _) =>
         {
@@ -75,15 +70,15 @@ public class Main : AOPluginEntry
             if (_resend)
             {
                 _resend = false;
-                _server.Broadcast(_snapshotJson ?? JsonConvert.SerializeObject(new { type = "dungeon", rooms = Array.Empty<object>() }));
+                _server.Send(_snapshotJson ?? JsonConvert.SerializeObject(new { type = "dungeon", rooms = Array.Empty<object>() }));
             }
 
-            if (!_server.HasClients || _snapshotJson == null) return;
+            if (!_server.HasPages || _snapshotJson == null) return;
 
             // Every frame, and everything in one message. The map is for
             // showing where things are now, and anything slower shows you
             // where they were.
-            _server.Broadcast(JsonConvert.SerializeObject(LiveFrame.Frame(_sendDynels)));
+            _server.Send(JsonConvert.SerializeObject(LiveFrame.Frame(_sendDynels)));
         }
         catch (Exception ex)
         {
@@ -105,7 +100,7 @@ public class Main : AOPluginEntry
             _snapshotJson = null;
             _snapshotPf = 0;
             _snapshotRooms = 0;
-            _server?.Broadcast(JsonConvert.SerializeObject(new { type = "dungeon", rooms = Array.Empty<object>() }));
+            _server?.Send(JsonConvert.SerializeObject(new { type = "dungeon", rooms = Array.Empty<object>() }));
             return;
         }
 
@@ -120,16 +115,14 @@ public class Main : AOPluginEntry
         _snapshotJson = JsonConvert.SerializeObject(snapshot);
         _snapshotPf = pf;
         _snapshotRooms = rooms;
-        _server?.Broadcast(_snapshotJson);
+        _server?.Send(_snapshotJson);
     }
 
     public override void Teardown()
     {
         Game.OnUpdate -= OnUpdate;
-        _server?.Stop();
+        _server?.Dispose();
         _server = null;
-        _page?.Stop();
-        _page = null;
         _snapshotJson = null;
     }
 }
